@@ -1,0 +1,33 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  AWS_REGION: "eu-west-1"
+  CDK_STACK_NAME: "BackStageInfraStack"
+
+before_script:
+  - python --version
+  - pip install -r requirements.txt
+
+build:
+  stage: build
+  script:
+    - echo "Building CDK for Backstage Infrastructure ..."
+    - npm install -g aws-cdk
+    - cdk synth
+
+test:
+  stage: test
+  script:
+    - echo "Running tests"
+    - pip install pytest
+    - pytest
+
+deploy:
+  stage: deploy
+  script:
+    - echo "Deploying the CDK app"
+    - npm install -g aws-cdk
+    - cdk deploy --require-approval never --outputs-file cdk-outputs.json
