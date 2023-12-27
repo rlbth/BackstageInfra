@@ -12,6 +12,7 @@ before_script:
   - pip install -r requirements.txt
 
 build:
+  image: node:14-buster
   stage: build
   script:
     - echo "Building CDK for Backstage Infrastructure ..."
@@ -26,8 +27,10 @@ test:
     - pytest
 
 deploy:
+  image: node:14-buster
   stage: deploy
   script:
     - echo "Deploying the CDK app"
     - npm install -g aws-cdk
+    - cdk bootstrap
     - cdk deploy --require-approval never --outputs-file cdk-outputs.json

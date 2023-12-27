@@ -1,15 +1,18 @@
 from aws_cdk import (
-    Construct,
     Stack,
     CfnOutput,
-    iam,
+    aws_iam as iam,
     aws_ec2 as ec2,
     aws_eks as eks,
 )
+from constructs import Construct
 
 class BackstageEksClusterStack(Stack):
-    def __init__(self, scope: Construct, id: str, vpc: ec2.vpc, **kwargs) -> None:
+    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
+      
+        existing_vpc = ec2.Vpc.from_lookup(self, "VPC", vpc_name='default-vpc')
+        vpc = existing_vpc
 
         #Create IAM role for EKS cluster 
         eks_role = iam.Role(self, "EksRole",
@@ -28,8 +31,11 @@ class BackstageEksClusterStack(Stack):
         eks_sg.add_egress_rule(ec2.Peer.any_ipv4(), ec2.Port.udp(53))    # UDP 53 for DNS
         eks_sg.add_egress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(53))    # TCP 53 for DNS
 
-        #Choose subnets for EKS cluster - public subnets eu-west-1a and eu-west-1b that already exist
-        subnets = ec2.SubnetSelection(subnet_ids=["subnet-0c0e0ae939a5c7288", "subnet-0c34ccdc84367324a"])
+        #Choose subnets for EKS cluster - public, private  subnets eu-west-1a  that already exist
+        publicsubnet = ec2.Subnet.from_subnet_attributes(self,'publicsubnet', availability_zone = 'eu-west-1a', subnet_id = 'subnet-03e0b91b2ac696fd5')
+        privatesubnet = ec2.Subnet.from_subnet_attributes(self,'privatesubnet', availability_zone = 'eu-west-1b', subnet_id = 'subnet-0609b8a74e5ed452a')
+        subnets = ec2.SubnetSelection(subnets = [publicsubnet, privatesubnet])
+#        subnets = ec2.SubnetSelection(subnet_ids=["subnet-0609b8a74e5ed452a", "subnet-03e0b91b2ac696fd5"])
        
         # Create the EKS cluster
         cluster = eks.Cluster(self, 'backStageCluster',
@@ -50,14 +56,15 @@ class BackstageEksClusterStack(Stack):
                             iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEKSFargatePodExecutionRolePolicy")
                         ])
         
-        #Choose subnets for fargate - private subnets eu-west-1a and eu-west-1b that already exist
-        fargate_subnets = ec2.SubnetSelection(subnet_ids=["subnet-0c0e0ae939a5c7288", "subnet-0c34ccdc84367324a"])
-
+        #Choose subnets for fargate - private subnets eu-west-1b that already exist
+ #       fargate_subnets = ec2.SubnetSelection(subnets = [privatesubnet])
+#       fargate_subnets = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE)
+#       fargate_subnets = ec2.SubnetSelection(subnet_type=ec2.SubnetType('PRIVATE'))
         # Create a Fargate profile for the cluster
         fargate_profile = cluster.add_fargate_profile('BackStageFargateProfile',
             pod_execution_role=fargate_role,
             selectors=[eks.Selector(namespace='default')],
-            vpc_subnets=fargate_subnets
+#            vpc_subnets=fargate_subnets
         )
 
         # Output the cluster name and endpoint URL
