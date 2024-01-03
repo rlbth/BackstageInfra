@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: backstage
-          image: erangsa/backstage
-          imagePullPolicy: IfNotPresent
+          image: lakran/backstage
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 7007
